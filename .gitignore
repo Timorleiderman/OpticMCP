@@ -1,5 +1,7 @@
 # Captured images
 capture/
+mcp_captured_image.jpg
+mcp_saved_image.jpg
 
 # Python
 __pycache__/

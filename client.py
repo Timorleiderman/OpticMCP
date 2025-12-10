@@ -13,7 +13,7 @@ async def main():
     
     server_params = StdioServerParameters(
         command="uv",
-        args=["run", "-q", "python", "optic_mcp.py"],
+        args=["run", "-q", "python", "-m", "optic_mcp.server"],
     )
     
     print("Connecting to Optic MCP server...")
