@@ -10,14 +10,28 @@ A Model Context Protocol (MCP) server that provides camera/vision tools for AI a
 
 ## Requirements
 
-- Python 3.13+
+- Python 3.10+
 - USB camera connected to your system
 
 ## Installation
 
+### From PyPI (Recommended)
+
+```bash
+pip install optic-mcp
+```
+
+Or with `uv`:
+
+```bash
+uv pip install optic-mcp
+```
+
+### From Source
+
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/OpticMCP.git
+git clone https://github.com/Timorleiderman/OpticMCP.git
 cd OpticMCP
 
 # Install dependencies with uv
@@ -28,17 +42,25 @@ uv sync
 
 ### Running the MCP Server
 
+If installed from PyPI:
+
 ```bash
-uv run python optic_mcp.py
+optic-mcp
 ```
 
-### Testing with the Client
+Or with uvx (no installation required):
+
+```bash
+uvx optic-mcp
+```
+
+### Testing with the Client (from source)
 
 ```bash
 uv run python client.py
 ```
 
-### Direct Camera Test
+### Direct Camera Test (from source)
 
 ```bash
 uv run python test_camera.py
@@ -46,14 +68,41 @@ uv run python test_camera.py
 
 ## MCP Configuration
 
-Add to your MCP client configuration (e.g., Claude Desktop):
+Add to your MCP client configuration (e.g., Claude Desktop, OpenCode):
+
+### Using uvx (Recommended)
+
+```json
+{
+  "mcpServers": {
+    "optic-mcp": {
+      "command": "uvx",
+      "args": ["optic-mcp"]
+    }
+  }
+}
+```
+
+### Using pip installation
+
+```json
+{
+  "mcpServers": {
+    "optic-mcp": {
+      "command": "optic-mcp"
+    }
+  }
+}
+```
+
+### From source
 
 ```json
 {
   "mcpServers": {
     "optic-mcp": {
       "command": "uv",
-      "args": ["run", "--directory", "/path/to/OpticMCP", "python", "optic_mcp.py"]
+      "args": ["run", "--directory", "/path/to/OpticMCP", "python", "-m", "optic_mcp.server"]
     }
   }
 }

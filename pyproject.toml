@@ -1,10 +1,50 @@
 [project]
 name = "optic-mcp"
 version = "0.1.0"
-description = "Add your description here"
+description = "MCP server for USB camera capture with OpenCV - capture images from cameras for AI assistants"
 readme = "README.md"
-requires-python = ">=3.13"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [
+    { name = "Timor Leiderman", email = "timorleiderman@gmail.com" }
+]
+keywords = ["mcp", "camera", "opencv", "ai", "llm", "vision", "usb-camera", "model-context-protocol"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Multimedia :: Video :: Capture",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 dependencies = [
-    "mcp[cli]>=1.23.3",
-    "opencv-python>=4.12.0.88",
+    "mcp[cli]>=1.0.0",
+    "opencv-python>=4.8.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Timorleiderman/OpticMCP"
+Repository = "https://github.com/Timorleiderman/OpticMCP"
+Issues = "https://github.com/Timorleiderman/OpticMCP/issues"
+
+[project.scripts]
+optic-mcp = "optic_mcp.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/optic_mcp"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/README.md",
+    "/LICENSE",
 ]
