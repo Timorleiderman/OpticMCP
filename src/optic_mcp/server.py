@@ -5,122 +5,98 @@ import os
 # This is critical for MCP stdio communication
 def _suppress_opencv_stderr():
     """Redirect stderr to /dev/null at the OS level to silence OpenCV debug messages."""
-    # Save original stderr fd
     original_stderr_fd = os.dup(2)
-    # Open /dev/null
     devnull = os.open(os.devnull, os.O_WRONLY)
-    # Replace stderr fd with /dev/null
     os.dup2(devnull, 2)
     os.close(devnull)
     return original_stderr_fd
 
 
-def _restore_stderr(original_fd):
-    """Restore original stderr."""
-    os.dup2(original_fd, 2)
-    os.close(original_fd)
-
-
 # Suppress stderr before cv2 import
 _original_stderr = _suppress_opencv_stderr()
 
-import cv2  # noqa: E402 - must import after stderr suppression
-
-# Restore stderr after cv2 is loaded (optional, keeps it suppressed for runtime)
-# _restore_stderr(_original_stderr)
-
-import base64  # noqa: E402
-from typing import List  # noqa: E402
 from mcp.server.fastmcp import FastMCP  # noqa: E402
+
+from optic_mcp import usb as usb  # noqa: E402
+from optic_mcp import rtsp as rtsp  # noqa: E402
 
 # Initialize the MCP server
 mcp = FastMCP("optic-mcp")
 
 
+# USB Camera Tools
 @mcp.tool()
-def list_cameras() -> List[dict]:
+def list_cameras():
     """
     Scans for available USB cameras connected to the system.
     Returns a list of available camera indices and their status.
-    It attempts to read a frame to ensure the camera is truly available.
     """
-    available_cameras = []
-    # Scan first 10 indices
-    for index in range(10):
-        cap = cv2.VideoCapture(index)
-        if cap.isOpened():
-            # Try to read a frame to confirm it's working
-            ret, _ = cap.read()
-            if ret:
-                backend = cap.getBackendName()
-                available_cameras.append(
-                    {
-                        "index": index,
-                        "status": "available",
-                        "backend": backend,
-                        "description": f"Camera {index} ({backend})",
-                    }
-                )
-            cap.release()
-
-    return available_cameras
+    return usb.list_cameras()
 
 
 @mcp.tool()
-def capture_image(camera_index: int = 0) -> str:
+def capture_image(camera_index: int = 0):
     """
     Captures a single frame from the specified camera index.
     Returns the image as a base64 encoded JPEG string.
     """
-    cap = cv2.VideoCapture(camera_index)
-
-    if not cap.isOpened():
-        raise RuntimeError(f"Could not open camera at index {camera_index}")
-
-    try:
-        # Allow camera to warm up
-        for _ in range(5):
-            cap.read()
-
-        ret, frame = cap.read()
-        if not ret:
-            raise RuntimeError(f"Failed to capture frame from camera {camera_index}")
-
-        # Encode as JPEG
-        _, buffer = cv2.imencode(".jpg", frame)
-        jpg_as_text = base64.b64encode(buffer).decode("utf-8")
-
-        return jpg_as_text
-
-    finally:
-        cap.release()
+    return usb.capture_image(camera_index)
 
 
 @mcp.tool()
-def save_image(file_path: str, camera_index: int = 0) -> str:
+def save_image(file_path: str, camera_index: int = 0):
     """
     Captures a frame from the specified camera and saves it to the given file path.
     Returns a success message.
     """
-    cap = cv2.VideoCapture(camera_index)
+    return usb.save_image(file_path, camera_index)
 
-    if not cap.isOpened():
-        raise RuntimeError(f"Could not open camera at index {camera_index}")
 
-    try:
-        # Allow camera to warm up
-        for _ in range(5):
-            cap.read()
+# RTSP Stream Tools
+@mcp.tool()
+def rtsp_capture_image(rtsp_url: str, timeout_seconds: int = 10):
+    """
+    Captures a single frame from an RTSP stream URL.
+    Returns the image as a base64 encoded JPEG string.
 
-        ret, frame = cap.read()
-        if not ret:
-            raise RuntimeError(f"Failed to capture frame from camera {camera_index}")
+    Common RTSP URL formats:
+        - rtsp://ip:554/stream
+        - rtsp://username:password@ip:554/stream
+        - rtsp://ip:554/cam/realmonitor?channel=1&subtype=0 (Dahua)
+        - rtsp://ip:554/Streaming/Channels/101 (Hikvision)
+    """
+    return rtsp.capture_image(rtsp_url, timeout_seconds)
 
-        cv2.imwrite(file_path, frame)
-        return f"Image saved to {file_path}"
 
-    finally:
-        cap.release()
+@mcp.tool()
+def rtsp_save_image(rtsp_url: str, file_path: str, timeout_seconds: int = 10):
+    """
+    Captures a frame from an RTSP stream and saves it to the given file path.
+    Returns a success message with the file path.
+
+    Common RTSP URL formats:
+        - rtsp://ip:554/stream
+        - rtsp://username:password@ip:554/stream
+        - rtsp://ip:554/cam/realmonitor?channel=1&subtype=0 (Dahua)
+        - rtsp://ip:554/Streaming/Channels/101 (Hikvision)
+    """
+    return rtsp.save_image(rtsp_url, file_path, timeout_seconds)
+
+
+@mcp.tool()
+def rtsp_check_stream(rtsp_url: str, timeout_seconds: int = 10):
+    """
+    Validates an RTSP stream URL and returns stream information.
+    Useful for testing connectivity before capturing images.
+
+    Returns a dictionary with stream status and properties including:
+        - status: 'available' or 'unavailable'
+        - width: frame width in pixels
+        - height: frame height in pixels
+        - fps: frames per second
+        - codec: video codec fourcc code
+    """
+    return rtsp.check_stream(rtsp_url, timeout_seconds)
 
 
 def main():
