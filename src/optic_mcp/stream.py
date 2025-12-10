@@ -333,6 +333,36 @@ class DashboardHandler(BaseHTTPRequestHandler):
         else:
             self.send_error(404, "Not Found")
 
+    def do_POST(self):
+        """Handle POST requests - stop streams."""
+        if self.path == "/api/stop-all":
+            self._stop_all_streams()
+        elif self.path.startswith("/api/stop/"):
+            camera_index = int(self.path.split("/")[-1])
+            self._stop_stream(camera_index)
+        else:
+            self.send_error(404, "Not Found")
+
+    def _stop_stream(self, camera_index: int):
+        """Stop a specific camera stream."""
+        result = _manager.stop_stream(camera_index)
+        data = json.dumps(result)
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data.encode())
+
+    def _stop_all_streams(self):
+        """Stop all camera streams."""
+        _manager.stop_all()
+        data = json.dumps({"status": "stopped_all"})
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data.encode())
+
     def _serve_dashboard(self):
         """Serve the dynamic multi-camera dashboard HTML page."""
         html = """<!DOCTYPE html>
@@ -355,7 +385,38 @@ class DashboardHandler(BaseHTTPRequestHandler):
             border-bottom: 1px solid #333;
         }
         h1 { color: #4CAF50; font-size: 1.8em; }
-        .status { color: #888; font-size: 0.9em; margin-top: 5px; }
+        .header-controls {
+            margin-top: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+        }
+        .status { color: #888; font-size: 0.9em; }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background 0.2s;
+        }
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        .btn-danger:hover { background: #c82333; }
+        .btn-danger:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        .btn-stop {
+            background: #ff6b6b;
+            color: white;
+            padding: 4px 10px;
+            font-size: 0.8em;
+        }
+        .btn-stop:hover { background: #ee5a5a; }
         .camera-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
@@ -376,6 +437,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
             justify-content: space-between;
             align-items: center;
         }
+        .camera-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
         .camera-title { font-weight: 600; }
         .camera-port { color: #4CAF50; font-size: 0.85em; }
         .camera-card img {
@@ -395,12 +461,35 @@ class DashboardHandler(BaseHTTPRequestHandler):
 <body>
     <header>
         <h1>OpticMCP Dashboard</h1>
-        <div class="status" id="status">Loading...</div>
+        <div class="header-controls">
+            <span class="status" id="status">Loading...</span>
+            <button class="btn btn-danger" id="stop-all-btn" onclick="stopAllStreams()">Stop All</button>
+        </div>
     </header>
     <div class="camera-grid" id="grid"></div>
 
     <script>
         let lastStreamCount = -1;
+
+        async function stopStream(cameraIndex) {
+            try {
+                await fetch('/api/stop/' + cameraIndex, { method: 'POST' });
+                lastStreamCount = -1;
+                updateDashboard();
+            } catch (e) {
+                console.error('Failed to stop stream:', e);
+            }
+        }
+
+        async function stopAllStreams() {
+            try {
+                await fetch('/api/stop-all', { method: 'POST' });
+                lastStreamCount = -1;
+                updateDashboard();
+            } catch (e) {
+                console.error('Failed to stop all streams:', e);
+            }
+        }
 
         async function updateDashboard() {
             try {
@@ -408,8 +497,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 const streams = await response.json();
                 const grid = document.getElementById('grid');
                 const status = document.getElementById('status');
+                const stopAllBtn = document.getElementById('stop-all-btn');
 
                 status.textContent = streams.length + ' active stream' + (streams.length !== 1 ? 's' : '');
+                stopAllBtn.disabled = streams.length === 0;
 
                 if (streams.length === 0) {
                     grid.innerHTML = '<div class="no-streams"><h2>No Active Streams</h2><p>Start a camera stream to see it here.</p></div>';
@@ -422,8 +513,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     grid.innerHTML = streams.map(s => `
                         <div class="camera-card" id="cam-${s.camera_index}">
                             <div class="camera-header">
-                                <span class="camera-title">Camera ${s.camera_index}</span>
-                                <span class="camera-port">:${s.port}</span>
+                                <div class="camera-info">
+                                    <span class="camera-title">Camera ${s.camera_index}</span>
+                                    <span class="camera-port">:${s.port}</span>
+                                </div>
+                                <button class="btn btn-stop" onclick="stopStream(${s.camera_index})">Stop</button>
                             </div>
                             <img src="${s.stream_url}" alt="Camera ${s.camera_index}">
                         </div>
