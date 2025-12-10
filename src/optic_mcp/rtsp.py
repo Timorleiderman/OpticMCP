@@ -1,49 +1,6 @@
 """RTSP stream handling module."""
 
-import base64
-
 import cv2
-
-
-def capture_image(rtsp_url: str, timeout_seconds: int = 10) -> str:
-    """
-    Captures a single frame from an RTSP stream URL.
-    Returns the image as a base64 encoded JPEG string.
-
-    Args:
-        rtsp_url: The RTSP stream URL (e.g., rtsp://username:password@ip:port/path)
-        timeout_seconds: Connection timeout in seconds (default: 10)
-
-    Common RTSP URL formats:
-        - rtsp://ip:554/stream
-        - rtsp://username:password@ip:554/stream
-        - rtsp://ip:554/cam/realmonitor?channel=1&subtype=0 (Dahua)
-        - rtsp://ip:554/Streaming/Channels/101 (Hikvision)
-    """
-    cap = cv2.VideoCapture(rtsp_url, cv2.CAP_FFMPEG)
-
-    cap.set(cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, timeout_seconds * 1000)
-    cap.set(cv2.CAP_PROP_READ_TIMEOUT_MSEC, timeout_seconds * 1000)
-    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-
-    if not cap.isOpened():
-        raise RuntimeError(f"Could not connect to RTSP stream: {rtsp_url}")
-
-    try:
-        for _ in range(5):
-            cap.grab()
-
-        ret, frame = cap.read()
-        if not ret or frame is None:
-            raise RuntimeError(f"Failed to capture frame from RTSP stream: {rtsp_url}")
-
-        _, buffer = cv2.imencode(".jpg", frame)
-        jpg_as_text = base64.b64encode(buffer).decode("utf-8")
-
-        return jpg_as_text
-
-    finally:
-        cap.release()
 
 
 def save_image(rtsp_url: str, file_path: str, timeout_seconds: int = 10) -> str:

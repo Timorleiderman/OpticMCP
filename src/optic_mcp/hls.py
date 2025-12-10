@@ -1,49 +1,6 @@
 """HLS (HTTP Live Streaming) handling module."""
 
-import base64
-
 import cv2
-
-
-def capture_image(hls_url: str, timeout_seconds: int = 30) -> str:
-    """
-    Captures a single frame from an HLS stream URL.
-    Returns the image as a base64 encoded JPEG string.
-
-    Args:
-        hls_url: The HLS stream URL (typically ending in .m3u8)
-        timeout_seconds: Connection timeout in seconds (default: 30)
-
-    Common HLS URL formats:
-        - http://server/stream.m3u8
-        - https://server/live/stream.m3u8
-        - http://server/streams/{stream_id}/stream.m3u8
-    """
-    cap = cv2.VideoCapture(hls_url, cv2.CAP_FFMPEG)
-
-    cap.set(cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, timeout_seconds * 1000)
-    cap.set(cv2.CAP_PROP_READ_TIMEOUT_MSEC, timeout_seconds * 1000)
-    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-
-    if not cap.isOpened():
-        raise RuntimeError(f"Could not connect to HLS stream: {hls_url}")
-
-    try:
-        # Skip a few frames to get a current frame (HLS streams may buffer)
-        for _ in range(10):
-            cap.grab()
-
-        ret, frame = cap.read()
-        if not ret or frame is None:
-            raise RuntimeError(f"Failed to capture frame from HLS stream: {hls_url}")
-
-        _, buffer = cv2.imencode(".jpg", frame)
-        jpg_as_text = base64.b64encode(buffer).decode("utf-8")
-
-        return jpg_as_text
-
-    finally:
-        cap.release()
 
 
 def save_image(hls_url: str, file_path: str, timeout_seconds: int = 30) -> str:

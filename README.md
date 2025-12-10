@@ -21,16 +21,22 @@ OpticMCP aims to be a universal camera interface for AI assistants, supporting a
 
 ### USB Cameras
 - **list_cameras** - Scan and list all available USB cameras
-- **capture_image** - Capture a frame and return as base64-encoded JPEG
 - **save_image** - Capture a frame and save directly to a file
 
+### Camera Streaming
+- **start_stream** - Start streaming a camera to a localhost HTTP server (MJPEG)
+- **stop_stream** - Stop streaming a camera
+- **list_streams** - List all active camera streams
+
+### Multi-Camera Dashboard
+- **start_dashboard** - Start a dynamic dashboard that displays all active camera streams in a responsive grid
+- **stop_dashboard** - Stop the dashboard server
+
 ### RTSP Streams (Not tested with real hardware)
-- **rtsp_capture_image** - Capture a frame from an RTSP stream
 - **rtsp_save_image** - Capture and save a frame from an RTSP stream
 - **rtsp_check_stream** - Validate RTSP stream and get properties
 
 ### HLS Streams (HTTP Live Streaming)
-- **hls_capture_image** - Capture a frame from an HLS stream
 - **hls_save_image** - Capture and save a frame from an HLS stream
 - **hls_check_stream** - Validate HLS stream and get properties
 
@@ -178,15 +184,6 @@ Scans for available USB cameras (indices 0-9) and returns their status.
 ]
 ```
 
-### capture_image
-
-Captures a single frame from the specified camera.
-
-**Parameters:**
-- `camera_index` (int, default: 0) - Camera index to capture from
-
-**Returns:** Base64-encoded JPEG string
-
 ### save_image
 
 Captures a frame and saves it to disk.
@@ -197,26 +194,90 @@ Captures a frame and saves it to disk.
 
 **Returns:** Success message with file path
 
+### Streaming Tools
+
+Stream cameras to a local HTTP server for real-time viewing in any browser.
+
+#### start_stream
+
+Start streaming a camera to a localhost HTTP server. The stream uses MJPEG format which is widely supported.
+
+**Parameters:**
+- `camera_index` (int, default: 0) - Camera index to stream
+- `port` (int, default: 8080) - Port to serve the stream on
+
+**Returns:** Dictionary with stream URLs and status
+
+```json
+{
+  "status": "started",
+  "camera_index": 0,
+  "port": 8080,
+  "url": "http://localhost:8080",
+  "stream_url": "http://localhost:8080/stream"
+}
+```
+
+**Usage:**
+- Open `http://localhost:8080` in a browser to view the stream with a simple UI
+- Use `http://localhost:8080/stream` for the raw MJPEG stream (can be embedded in other applications)
+
+#### stop_stream
+
+Stop streaming a camera.
+
+**Parameters:**
+- `camera_index` (int, default: 0) - Camera index to stop streaming
+
+**Returns:** Dictionary with status
+
+#### list_streams
+
+List all active camera streams.
+
+**Returns:** List of active stream information including URLs and ports
+
+### Dashboard Tools
+
+#### start_dashboard
+
+Start a dynamic multi-camera dashboard server. The dashboard automatically detects all active camera streams and displays them in a responsive grid layout.
+
+**Parameters:**
+- `port` (int, default: 9000) - Port to serve the dashboard on
+
+**Returns:** Dictionary with dashboard URL and status
+
+```json
+{
+  "status": "started",
+  "port": 9000,
+  "url": "http://localhost:9000"
+}
+```
+
+**Usage:**
+1. Start one or more camera streams with `start_stream`
+2. Start the dashboard with `start_dashboard`
+3. Open `http://localhost:9000` in a browser
+4. The dashboard auto-updates every 3 seconds to detect new/removed streams
+
+#### stop_dashboard
+
+Stop the dashboard server.
+
+**Returns:** Dictionary with status
+
 ### RTSP Tools
 
 > **Note:** RTSP functionality has not been tested with real RTSP hardware/streams. It is implemented but may require adjustments for specific camera vendors.
-
-#### rtsp_capture_image
-
-Captures a single frame from an RTSP stream.
-
-**Parameters:**
-- `rtsp_url` (str) - RTSP stream URL (e.g., `rtsp://ip:554/stream`)
-- `timeout_seconds` (int, default: 10) - Connection timeout
-
-**Returns:** Base64-encoded JPEG string
 
 #### rtsp_save_image
 
 Captures a frame from an RTSP stream and saves it to disk.
 
 **Parameters:**
-- `rtsp_url` (str) - RTSP stream URL
+- `rtsp_url` (str) - RTSP stream URL (e.g., `rtsp://ip:554/stream`)
 - `file_path` (str) - Path where the image will be saved
 - `timeout_seconds` (int, default: 10) - Connection timeout
 
@@ -234,22 +295,12 @@ Validates an RTSP stream and returns stream information.
 
 ### HLS Tools
 
-#### hls_capture_image
-
-Captures a single frame from an HLS (HTTP Live Streaming) URL.
-
-**Parameters:**
-- `hls_url` (str) - HLS stream URL (typically ending in `.m3u8`)
-- `timeout_seconds` (int, default: 30) - Connection timeout
-
-**Returns:** Base64-encoded JPEG string
-
 #### hls_save_image
 
 Captures a frame from an HLS stream and saves it to disk.
 
 **Parameters:**
-- `hls_url` (str) - HLS stream URL
+- `hls_url` (str) - HLS stream URL (typically ending in `.m3u8`)
 - `file_path` (str) - Path where the image will be saved
 - `timeout_seconds` (int, default: 30) - Connection timeout
 
@@ -275,9 +326,9 @@ OpenCV prints debug messages to stderr which corrupts MCP's stdio communication.
 
 - [x] **v0.1.0** - USB camera support via OpenCV
 - [x] **v0.2.0** - IP camera support (RTSP and HLS streams)
-- [ ] **v0.3.0** - Camera configuration (resolution, format, etc.)
-- [ ] **v0.4.0** - Video recording capabilities
-- [ ] **v0.5.0** - Multi-camera simultaneous capture
+- [x] **v0.3.0** - Multi-camera dashboard with realtime streaming
+- [ ] **v0.4.0** - Camera configuration (resolution, format, etc.)
+- [ ] **v0.5.0** - Video recording capabilities
 
 ## Contributing
 
