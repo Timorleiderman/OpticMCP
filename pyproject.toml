@@ -27,6 +27,14 @@ dependencies = [
     "opencv-python>=4.8.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "numpy>=1.24.0",
+    "ruff>=0.8.0",
+    "twine>=5.0.0",
+]
+
 [project.urls]
 Homepage = "https://github.com/Timorleiderman/OpticMCP"
 Repository = "https://github.com/Timorleiderman/OpticMCP"
@@ -48,3 +56,11 @@ include = [
     "/README.md",
     "/LICENSE",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+src = ["src"]
+line-length = 100

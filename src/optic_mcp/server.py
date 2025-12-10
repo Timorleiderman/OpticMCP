@@ -1,5 +1,5 @@
 import os
-import sys
+
 
 # Suppress OpenCV's stderr noise BEFORE importing cv2
 # This is critical for MCP stdio communication
@@ -14,25 +14,28 @@ def _suppress_opencv_stderr():
     os.close(devnull)
     return original_stderr_fd
 
+
 def _restore_stderr(original_fd):
     """Restore original stderr."""
     os.dup2(original_fd, 2)
     os.close(original_fd)
 
+
 # Suppress stderr before cv2 import
 _original_stderr = _suppress_opencv_stderr()
 
-import cv2
+import cv2  # noqa: E402 - must import after stderr suppression
 
 # Restore stderr after cv2 is loaded (optional, keeps it suppressed for runtime)
 # _restore_stderr(_original_stderr)
 
-import base64
-from typing import List
-from mcp.server.fastmcp import FastMCP
+import base64  # noqa: E402
+from typing import List  # noqa: E402
+from mcp.server.fastmcp import FastMCP  # noqa: E402
 
 # Initialize the MCP server
 mcp = FastMCP("optic-mcp")
+
 
 @mcp.tool()
 def list_cameras() -> List[dict]:
@@ -50,15 +53,18 @@ def list_cameras() -> List[dict]:
             ret, _ = cap.read()
             if ret:
                 backend = cap.getBackendName()
-                available_cameras.append({
-                    "index": index,
-                    "status": "available",
-                    "backend": backend,
-                    "description": f"Camera {index} ({backend})"
-                })
+                available_cameras.append(
+                    {
+                        "index": index,
+                        "status": "available",
+                        "backend": backend,
+                        "description": f"Camera {index} ({backend})",
+                    }
+                )
             cap.release()
-    
+
     return available_cameras
+
 
 @mcp.tool()
 def capture_image(camera_index: int = 0) -> str:
@@ -67,25 +73,25 @@ def capture_image(camera_index: int = 0) -> str:
     Returns the image as a base64 encoded JPEG string.
     """
     cap = cv2.VideoCapture(camera_index)
-    
+
     if not cap.isOpened():
         raise RuntimeError(f"Could not open camera at index {camera_index}")
-    
+
     try:
         # Allow camera to warm up
         for _ in range(5):
             cap.read()
-            
+
         ret, frame = cap.read()
         if not ret:
             raise RuntimeError(f"Failed to capture frame from camera {camera_index}")
-            
+
         # Encode as JPEG
-        _, buffer = cv2.imencode('.jpg', frame)
-        jpg_as_text = base64.b64encode(buffer).decode('utf-8')
-        
+        _, buffer = cv2.imencode(".jpg", frame)
+        jpg_as_text = base64.b64encode(buffer).decode("utf-8")
+
         return jpg_as_text
-        
+
     finally:
         cap.release()
 
@@ -97,22 +103,22 @@ def save_image(file_path: str, camera_index: int = 0) -> str:
     Returns a success message.
     """
     cap = cv2.VideoCapture(camera_index)
-    
+
     if not cap.isOpened():
         raise RuntimeError(f"Could not open camera at index {camera_index}")
-        
+
     try:
         # Allow camera to warm up
         for _ in range(5):
             cap.read()
-            
+
         ret, frame = cap.read()
         if not ret:
             raise RuntimeError(f"Failed to capture frame from camera {camera_index}")
-            
+
         cv2.imwrite(file_path, frame)
         return f"Image saved to {file_path}"
-        
+
     finally:
         cap.release()
 
