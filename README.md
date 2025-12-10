@@ -1,8 +1,19 @@
 # OpticMCP
 
-A Model Context Protocol (MCP) server that provides camera/vision tools for AI assistants. Capture images from USB cameras connected to your system.
+A Model Context Protocol (MCP) server that provides camera/vision tools for AI assistants. Connect to cameras and capture images for use with LLMs.
 
-## Features
+## Vision
+
+OpticMCP aims to be a universal camera interface for AI assistants, supporting any camera type:
+
+- **USB Cameras** (Current)
+- **IP/Network Cameras** (Planned) - RTSP, ONVIF, HTTP streams
+- **Raspberry Pi Cameras** (Planned) - CSI camera modules
+- **Screen Capture** (Planned) - Desktop/window capture
+- **Mobile Cameras** (Planned) - Phone camera integration
+- **Cloud Cameras** (Planned) - Integration with cloud camera services
+
+## Current Features (v0.1.0 - USB Cameras)
 
 - **list_cameras** - Scan and list all available USB cameras
 - **capture_image** - Capture a frame and return as base64-encoded JPEG
@@ -149,6 +160,18 @@ Captures a frame and saves it to disk.
 ### OpenCV + MCP Compatibility
 
 OpenCV prints debug messages to stderr which corrupts MCP's stdio communication. This server suppresses stderr at the file descriptor level before importing cv2 to prevent this issue.
+
+## Roadmap
+
+- [x] **v0.1.0** - USB camera support via OpenCV
+- [ ] **v0.2.0** - IP camera support (RTSP streams)
+- [ ] **v0.3.0** - Camera configuration (resolution, format, etc.)
+- [ ] **v0.4.0** - Video recording capabilities
+- [ ] **v0.5.0** - Multi-camera simultaneous capture
+
+## Contributing
+
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 

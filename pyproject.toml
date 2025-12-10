@@ -1,14 +1,14 @@
 [project]
 name = "optic-mcp"
 version = "0.1.0"
-description = "MCP server for USB camera capture with OpenCV - capture images from cameras for AI assistants"
+description = "MCP server for camera/vision tools - connect any camera to AI assistants"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"
 authors = [
     { name = "Timor Leiderman", email = "timorleiderman@gmail.com" }
 ]
-keywords = ["mcp", "camera", "opencv", "ai", "llm", "vision", "usb-camera", "model-context-protocol"]
+keywords = ["mcp", "camera", "opencv", "ai", "llm", "vision", "usb-camera", "model-context-protocol", "ip-camera", "rtsp"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
