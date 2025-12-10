@@ -19,6 +19,7 @@ from mcp.server.fastmcp import FastMCP  # noqa: E402
 
 from optic_mcp import usb as usb  # noqa: E402
 from optic_mcp import rtsp as rtsp  # noqa: E402
+from optic_mcp import hls as hls  # noqa: E402
 
 # Initialize the MCP server
 mcp = FastMCP("optic-mcp")
@@ -97,6 +98,57 @@ def rtsp_check_stream(rtsp_url: str, timeout_seconds: int = 10):
         - codec: video codec fourcc code
     """
     return rtsp.check_stream(rtsp_url, timeout_seconds)
+
+
+# HLS Stream Tools
+@mcp.tool()
+def hls_capture_image(hls_url: str, timeout_seconds: int = 30):
+    """
+    Captures a single frame from an HLS (HTTP Live Streaming) URL.
+    Returns the image as a base64 encoded JPEG string.
+
+    HLS streams are commonly used by webcams, surveillance systems,
+    and streaming services. They typically use .m3u8 playlist files.
+
+    Common HLS URL formats:
+        - http://server/stream.m3u8
+        - https://server/live/stream.m3u8
+        - http://server/streams/{stream_id}/stream.m3u8
+    """
+    return hls.capture_image(hls_url, timeout_seconds)
+
+
+@mcp.tool()
+def hls_save_image(hls_url: str, file_path: str, timeout_seconds: int = 30):
+    """
+    Captures a frame from an HLS stream and saves it to the given file path.
+    Returns a success message with the file path.
+
+    HLS streams are commonly used by webcams, surveillance systems,
+    and streaming services. They typically use .m3u8 playlist files.
+
+    Common HLS URL formats:
+        - http://server/stream.m3u8
+        - https://server/live/stream.m3u8
+        - http://server/streams/{stream_id}/stream.m3u8
+    """
+    return hls.save_image(hls_url, file_path, timeout_seconds)
+
+
+@mcp.tool()
+def hls_check_stream(hls_url: str, timeout_seconds: int = 30):
+    """
+    Validates an HLS stream URL and returns stream information.
+    Useful for testing connectivity before capturing images.
+
+    Returns a dictionary with stream status and properties including:
+        - status: 'available' or 'unavailable'
+        - width: frame width in pixels
+        - height: frame height in pixels
+        - fps: frames per second
+        - codec: video codec fourcc code
+    """
+    return hls.check_stream(hls_url, timeout_seconds)
 
 
 def main():

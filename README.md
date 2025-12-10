@@ -11,17 +11,28 @@ A Model Context Protocol (MCP) server that provides camera/vision tools for AI a
 OpticMCP aims to be a universal camera interface for AI assistants, supporting any camera type:
 
 - **USB Cameras** (Current)
-- **IP/Network Cameras** (Planned) - RTSP, ONVIF, HTTP streams
+- **IP/Network Cameras** (Current) - RTSP, HLS streams
 - **Raspberry Pi Cameras** (Planned) - CSI camera modules
 - **Screen Capture** (Planned) - Desktop/window capture
 - **Mobile Cameras** (Planned) - Phone camera integration
 - **Cloud Cameras** (Planned) - Integration with cloud camera services
 
-## Current Features (v0.1.0 - USB Cameras)
+## Current Features
 
+### USB Cameras
 - **list_cameras** - Scan and list all available USB cameras
 - **capture_image** - Capture a frame and return as base64-encoded JPEG
 - **save_image** - Capture a frame and save directly to a file
+
+### RTSP Streams (Not tested with real hardware)
+- **rtsp_capture_image** - Capture a frame from an RTSP stream
+- **rtsp_save_image** - Capture and save a frame from an RTSP stream
+- **rtsp_check_stream** - Validate RTSP stream and get properties
+
+### HLS Streams (HTTP Live Streaming)
+- **hls_capture_image** - Capture a frame from an HLS stream
+- **hls_save_image** - Capture and save a frame from an HLS stream
+- **hls_check_stream** - Validate HLS stream and get properties
 
 ## Requirements
 
@@ -69,16 +80,10 @@ Or with uvx (no installation required):
 uvx optic-mcp
 ```
 
-### Testing with the Client (from source)
+### Running from Source
 
 ```bash
-uv run python client.py
-```
-
-### Direct Camera Test (from source)
-
-```bash
-uv run python test_camera.py
+uv run optic-mcp
 ```
 
 ## MCP Configuration
@@ -103,16 +108,14 @@ Add to your Claude Desktop configuration file:
 
 ### OpenCode
 
-Add to your `opencode.json` (in `~/.opencode/` or your project directory):
+Add to your `opencode.json` (in `.opencode/` in your project directory or `~/.opencode/` globally):
 
 ```json
 {
   "mcp": {
-    "servers": {
-      "optic-mcp": {
-        "type": "local",
-        "command": ["uvx", "optic-mcp"]
-      }
+    "optic-mcp": {
+      "type": "local",
+      "command": ["uvx", "optic-mcp"]
     }
   }
 }
@@ -152,7 +155,7 @@ From source:
   "mcpServers": {
     "optic-mcp": {
       "command": "uv",
-      "args": ["run", "--directory", "/path/to/OpticMCP", "python", "-m", "optic_mcp.server"]
+      "args": ["run", "--directory", "/path/to/OpticMCP", "optic-mcp"]
     }
   }
 }
@@ -194,6 +197,74 @@ Captures a frame and saves it to disk.
 
 **Returns:** Success message with file path
 
+### RTSP Tools
+
+> **Note:** RTSP functionality has not been tested with real RTSP hardware/streams. It is implemented but may require adjustments for specific camera vendors.
+
+#### rtsp_capture_image
+
+Captures a single frame from an RTSP stream.
+
+**Parameters:**
+- `rtsp_url` (str) - RTSP stream URL (e.g., `rtsp://ip:554/stream`)
+- `timeout_seconds` (int, default: 10) - Connection timeout
+
+**Returns:** Base64-encoded JPEG string
+
+#### rtsp_save_image
+
+Captures a frame from an RTSP stream and saves it to disk.
+
+**Parameters:**
+- `rtsp_url` (str) - RTSP stream URL
+- `file_path` (str) - Path where the image will be saved
+- `timeout_seconds` (int, default: 10) - Connection timeout
+
+**Returns:** Success message with file path
+
+#### rtsp_check_stream
+
+Validates an RTSP stream and returns stream information.
+
+**Parameters:**
+- `rtsp_url` (str) - RTSP stream URL to validate
+- `timeout_seconds` (int, default: 10) - Connection timeout
+
+**Returns:** Dictionary with stream status and properties (width, height, fps, codec)
+
+### HLS Tools
+
+#### hls_capture_image
+
+Captures a single frame from an HLS (HTTP Live Streaming) URL.
+
+**Parameters:**
+- `hls_url` (str) - HLS stream URL (typically ending in `.m3u8`)
+- `timeout_seconds` (int, default: 30) - Connection timeout
+
+**Returns:** Base64-encoded JPEG string
+
+#### hls_save_image
+
+Captures a frame from an HLS stream and saves it to disk.
+
+**Parameters:**
+- `hls_url` (str) - HLS stream URL
+- `file_path` (str) - Path where the image will be saved
+- `timeout_seconds` (int, default: 30) - Connection timeout
+
+**Returns:** Success message with file path
+
+#### hls_check_stream
+
+Validates an HLS stream and returns stream information.
+
+**Parameters:**
+- `hls_url` (str) - HLS stream URL to validate
+- `timeout_seconds` (int, default: 30) - Connection timeout
+
+**Returns:** Dictionary with stream status and properties (width, height, fps, codec)
+
 ## Technical Notes
 
 ### OpenCV + MCP Compatibility
@@ -203,7 +274,7 @@ OpenCV prints debug messages to stderr which corrupts MCP's stdio communication.
 ## Roadmap
 
 - [x] **v0.1.0** - USB camera support via OpenCV
-- [ ] **v0.2.0** - IP camera support (RTSP streams)
+- [x] **v0.2.0** - IP camera support (RTSP and HLS streams)
 - [ ] **v0.3.0** - Camera configuration (resolution, format, etc.)
 - [ ] **v0.4.0** - Video recording capabilities
 - [ ] **v0.5.0** - Multi-camera simultaneous capture
