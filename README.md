@@ -103,7 +103,7 @@ Add to your Claude Desktop configuration file:
 
 ### OpenCode
 
-Add to your `~/.opencode/config.json`:
+Add to your `~/.opencode/opencode.json`:
 
 ```json
 {
