@@ -1,5 +1,9 @@
 # OpticMCP
 
+[![PyPI version](https://badge.fury.io/py/optic-mcp.svg)](https://pypi.org/project/optic-mcp/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A Model Context Protocol (MCP) server that provides camera/vision tools for AI assistants. Connect to cameras and capture images for use with LLMs.
 
 ## Vision
@@ -79,9 +83,12 @@ uv run python test_camera.py
 
 ## MCP Configuration
 
-Add to your MCP client configuration (e.g., Claude Desktop, OpenCode):
+### Claude Desktop
 
-### Using uvx (Recommended)
+Add to your Claude Desktop configuration file:
+
+**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
@@ -94,7 +101,39 @@ Add to your MCP client configuration (e.g., Claude Desktop, OpenCode):
 }
 ```
 
-### Using pip installation
+### OpenCode
+
+Add to your `~/.opencode/config.json`:
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "optic-mcp": {
+        "type": "local",
+        "command": ["uvx", "optic-mcp"]
+      }
+    }
+  }
+}
+```
+
+### Other MCP Clients
+
+Using uvx (recommended - no installation required):
+
+```json
+{
+  "mcpServers": {
+    "optic-mcp": {
+      "command": "uvx",
+      "args": ["optic-mcp"]
+    }
+  }
+}
+```
+
+Using pip installation:
 
 ```json
 {
@@ -106,7 +145,7 @@ Add to your MCP client configuration (e.g., Claude Desktop, OpenCode):
 }
 ```
 
-### From source
+From source:
 
 ```json
 {
