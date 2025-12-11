@@ -337,3 +337,7 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines
 ## License
 
 MIT
+
+<a href="https://glama.ai/mcp/servers/@Timorleiderman/OpticMCP">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@Timorleiderman/OpticMCP/badge" />
+</a>

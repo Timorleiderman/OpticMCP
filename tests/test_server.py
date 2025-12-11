@@ -1,5 +1,7 @@
 """Tests for OpticMCP server module structure."""
 
+import pytest
+
 
 def test_import_module():
     """Test that the module can be imported."""
@@ -11,6 +13,9 @@ def test_import_module():
 
 def test_mcp_tools_registered():
     """Test that all MCP tools are available."""
+    # Skip if mcp is not installed
+    pytest.importorskip("mcp")
+
     from optic_mcp import server
 
     # USB tools
