@@ -69,3 +69,8 @@ pythonpath = ["src"]
 [tool.ruff]
 src = ["src"]
 line-length = 100
+
+[dependency-groups]
+dev = [
+    "bump2version>=1.0.1",
+]

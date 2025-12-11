@@ -720,6 +720,11 @@ dev = [
     { name = "twine" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "bump2version" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "bump2version", marker = "extra == 'dev'", specifier = ">=1.0.0" },
@@ -734,6 +739,9 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.8.0" },
     { name = "twine", marker = "extra == 'dev'", specifier = ">=5.0.0" },
 ]
+
+[package.metadata.requires-dev]
+dev = [{ name = "bump2version", specifier = ">=1.0.1" }]
 
 [[package]]
 name = "packaging"
