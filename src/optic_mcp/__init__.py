@@ -1,6 +1,6 @@
 """OpticMCP - MCP server for USB camera capture with OpenCV."""
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 # Core modules are imported here for backwards compatibility
 from optic_mcp import usb
