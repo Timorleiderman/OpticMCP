@@ -1,8 +1,6 @@
 """Tests for validation module."""
 
-import os
 import pytest
-from unittest.mock import patch
 
 
 class TestValidateFilePath:

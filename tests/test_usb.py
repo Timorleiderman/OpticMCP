@@ -1,6 +1,5 @@
 """Tests for USB camera functions."""
 
-import pytest
 from unittest.mock import MagicMock, patch
 import numpy as np
 
