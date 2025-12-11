@@ -10,12 +10,13 @@ A Model Context Protocol (MCP) server that provides camera/vision tools for AI a
 
 OpticMCP aims to be a universal camera interface for AI assistants, supporting any camera type:
 
-- **USB Cameras** (Current)
-- **IP/Network Cameras** (Current) - RTSP, HLS streams
+- **USB Cameras** ✅
+- **IP/Network Cameras** ✅ - RTSP, HLS, MJPEG streams
+- **Screen Capture** ✅ - Desktop/monitor capture
+- **HTTP Images** ✅ - Download images from URLs
+- **QR/Barcode Decoding** ✅ - Decode QR codes and barcodes
 - **Raspberry Pi Cameras** (Planned) - CSI camera modules
-- **Screen Capture** (Planned) - Desktop/window capture
 - **Mobile Cameras** (Planned) - Phone camera integration
-- **Cloud Cameras** (Planned) - Integration with cloud camera services
 
 ## Current Features
 
@@ -32,13 +33,32 @@ OpticMCP aims to be a universal camera interface for AI assistants, supporting a
 - **start_dashboard** - Start a dynamic dashboard that displays all active camera streams in a responsive grid
 - **stop_dashboard** - Stop the dashboard server
 
-### RTSP Streams (Not tested with real hardware)
+### RTSP Streams
 - **rtsp_save_image** - Capture and save a frame from an RTSP stream
 - **rtsp_check_stream** - Validate RTSP stream and get properties
 
 ### HLS Streams (HTTP Live Streaming)
 - **hls_save_image** - Capture and save a frame from an HLS stream
 - **hls_check_stream** - Validate HLS stream and get properties
+
+### MJPEG Streams
+- **mjpeg_save_image** - Capture a frame from an MJPEG stream (common in IP cameras, ESP32-CAM)
+- **mjpeg_check_stream** - Validate MJPEG stream availability
+
+### Screen Capture
+- **screen_list_monitors** - List all available monitors/displays
+- **screen_save_image** - Capture full screenshot of a monitor
+- **screen_save_region** - Capture a specific region of the screen
+
+### HTTP Images
+- **http_save_image** - Download and save an image from any URL
+- **http_check_image** - Check if a URL points to a valid image
+
+### QR/Barcode Decoding (requires libzbar)
+- **decode_qr** - Decode QR codes from an image
+- **decode_barcode** - Decode barcodes (EAN, UPC, Code128, etc.)
+- **decode_all** - Decode all QR codes and barcodes from an image
+- **decode_and_annotate** - Decode and save annotated image with bounding boxes
 
 ## Requirements
 
@@ -316,6 +336,124 @@ Validates an HLS stream and returns stream information.
 
 **Returns:** Dictionary with stream status and properties (width, height, fps, codec)
 
+### MJPEG Tools
+
+#### mjpeg_save_image
+
+Captures a frame from an MJPEG stream (common in IP cameras, ESP32-CAM, Arduino cameras).
+
+**Parameters:**
+- `mjpeg_url` (str) - MJPEG stream URL (e.g., `http://camera/video.mjpg`)
+- `file_path` (str) - Path where the image will be saved
+- `timeout_seconds` (int, default: 10) - Connection timeout
+
+**Returns:** Dictionary with status, file_path, and size_bytes
+
+#### mjpeg_check_stream
+
+Validates an MJPEG stream URL.
+
+**Parameters:**
+- `mjpeg_url` (str) - MJPEG stream URL to validate
+- `timeout_seconds` (int, default: 10) - Connection timeout
+
+**Returns:** Dictionary with status, url, and content_type
+
+### Screen Capture Tools
+
+#### screen_list_monitors
+
+Lists all available monitors/displays.
+
+**Returns:** List of monitors with id, dimensions, and position
+
+#### screen_save_image
+
+Captures a full screenshot of a monitor.
+
+**Parameters:**
+- `file_path` (str) - Path where the image will be saved
+- `monitor` (int, default: 0) - Monitor index (0 = all monitors combined)
+
+**Returns:** Dictionary with status, file_path, and dimensions
+
+#### screen_save_region
+
+Captures a specific region of the screen.
+
+**Parameters:**
+- `file_path` (str) - Path where the image will be saved
+- `x` (int) - X coordinate of top-left corner
+- `y` (int) - Y coordinate of top-left corner
+- `width` (int) - Width in pixels
+- `height` (int) - Height in pixels
+
+**Returns:** Dictionary with status, file_path, and region details
+
+### HTTP Image Tools
+
+#### http_save_image
+
+Downloads an image from a URL and saves it to disk.
+
+**Parameters:**
+- `url` (str) - Image URL (http:// or https://)
+- `file_path` (str) - Path where the image will be saved
+- `timeout_seconds` (int, default: 30) - Connection timeout
+
+**Returns:** Dictionary with status, file_path, size_bytes, and content_type
+
+#### http_check_image
+
+Validates an image URL using a HEAD request.
+
+**Parameters:**
+- `url` (str) - Image URL to validate
+- `timeout_seconds` (int, default: 10) - Connection timeout
+
+**Returns:** Dictionary with status, content_type, and size_bytes
+
+### QR/Barcode Tools
+
+> **Note:** These tools require the `libzbar` system library. Install with: `brew install zbar` (macOS) or `apt install libzbar0` (Linux)
+
+#### decode_qr
+
+Decodes QR codes from an image file.
+
+**Parameters:**
+- `file_path` (str) - Path to the image file
+
+**Returns:** Dictionary with found, count, and codes list
+
+#### decode_barcode
+
+Decodes barcodes (EAN, UPC, Code128, etc.) from an image file.
+
+**Parameters:**
+- `file_path` (str) - Path to the image file
+
+**Returns:** Dictionary with found, count, and codes list
+
+#### decode_all
+
+Decodes all QR codes and barcodes from an image file.
+
+**Parameters:**
+- `file_path` (str) - Path to the image file
+
+**Returns:** Dictionary with found, count, and codes list
+
+#### decode_and_annotate
+
+Decodes codes and saves an annotated image with bounding boxes.
+
+**Parameters:**
+- `file_path` (str) - Path to the input image
+- `output_path` (str) - Path for the annotated output image
+
+**Returns:** Dictionary with found, count, output_path, and codes list
+
 ## Technical Notes
 
 ### OpenCV + MCP Compatibility
@@ -327,8 +465,9 @@ OpenCV prints debug messages to stderr which corrupts MCP's stdio communication.
 - [x] **v0.1.0** - USB camera support via OpenCV
 - [x] **v0.2.0** - IP camera support (RTSP and HLS streams)
 - [x] **v0.3.0** - Multi-camera dashboard with realtime streaming
-- [ ] **v0.4.0** - Camera configuration (resolution, format, etc.)
-- [ ] **v0.5.0** - Video recording capabilities
+- [x] **v0.4.0** - Screen capture, MJPEG streams, HTTP images, QR/barcode decoding
+- [ ] **v0.5.0** - Camera configuration (resolution, format, etc.)
+- [ ] **v0.6.0** - Video recording capabilities
 
 ## Contributing
 
