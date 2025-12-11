@@ -8,6 +8,11 @@ from typing import Dict, Optional
 
 import cv2
 
+from optic_mcp.validation import validate_camera_index, validate_port
+
+# Maximum number of concurrent streams to prevent resource exhaustion
+MAX_CONCURRENT_STREAMS = 10
+
 
 class MJPEGHandler(BaseHTTPRequestHandler):
     """HTTP request handler that serves MJPEG streams."""
@@ -25,9 +30,17 @@ class MJPEGHandler(BaseHTTPRequestHandler):
         else:
             self.send_error(404, "Not Found")
 
+    def _send_security_headers(self):
+        """Send security headers to prevent common attacks."""
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "SAMEORIGIN")
+        self.send_header("X-XSS-Protection", "1; mode=block")
+        self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
+
     def _serve_status_page(self):
         """Serve a simple HTML page with the stream embedded."""
         stream_server: StreamServer = self.server  # type: ignore[assignment]
+        # camera_index is validated as int, safe to use in HTML
         html = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -40,13 +53,14 @@ class MJPEGHandler(BaseHTTPRequestHandler):
 </head>
 <body>
     <h1>OpticMCP Camera Stream</h1>
-    <p>Camera Index: {stream_server.camera_index}</p>
+    <p>Camera Index: {int(stream_server.camera_index)}</p>
     <img src="/stream" alt="Camera Stream">
 </body>
 </html>"""
         self.send_response(200)
         self.send_header("Content-Type", "text/html")
         self.send_header("Content-Length", str(len(html)))
+        self._send_security_headers()
         self.end_headers()
         self.wfile.write(html.encode())
 
@@ -58,6 +72,7 @@ class MJPEGHandler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
         self.send_header("Pragma", "no-cache")
         self.send_header("Expires", "0")
+        self._send_security_headers()
         self.end_headers()
 
         try:
@@ -188,17 +203,32 @@ class StreamManager:
         Start streaming a camera to a localhost HTTP server.
 
         Args:
-            camera_index: The camera index to stream (default 0)
-            port: The port to serve the stream on (default 8080)
+            camera_index: The camera index to stream (0-100, default 0)
+            port: The port to serve the stream on (1024-65535, default 8080)
 
         Returns:
             Dictionary with stream URL and status
+
+        Raises:
+            ValueError: If camera_index or port is invalid.
+            RuntimeError: If max streams reached or port in use.
         """
-        if camera_index in self._streams:
-            existing = self._streams[camera_index]
+        # Validate inputs
+        validated_index = validate_camera_index(camera_index)
+        validated_port = validate_port(port)
+
+        # Check max concurrent streams
+        if len(self._streams) >= MAX_CONCURRENT_STREAMS:
+            raise RuntimeError(
+                f"Maximum concurrent streams ({MAX_CONCURRENT_STREAMS}) reached. "
+                f"Stop an existing stream before starting a new one."
+            )
+
+        if validated_index in self._streams:
+            existing = self._streams[validated_index]
             return {
                 "status": "already_running",
-                "camera_index": camera_index,
+                "camera_index": validated_index,
                 "port": existing.port,
                 "url": f"http://localhost:{existing.port}",
                 "stream_url": f"http://localhost:{existing.port}/stream",
@@ -206,21 +236,22 @@ class StreamManager:
 
         # Check if port is already in use by another stream
         for idx, server in self._streams.items():
-            if server.port == port:
+            if server.port == validated_port:
                 raise RuntimeError(
-                    f"Port {port} is already in use by camera {idx}. Choose a different port."
+                    f"Port {validated_port} is already in use by camera {idx}. "
+                    f"Choose a different port."
                 )
 
-        server = StreamServer(camera_index, port)
+        server = StreamServer(validated_index, validated_port)
         server.start()
-        self._streams[camera_index] = server
+        self._streams[validated_index] = server
 
         return {
             "status": "started",
-            "camera_index": camera_index,
-            "port": port,
-            "url": f"http://localhost:{port}",
-            "stream_url": f"http://localhost:{port}/stream",
+            "camera_index": validated_index,
+            "port": validated_port,
+            "url": f"http://localhost:{validated_port}",
+            "stream_url": f"http://localhost:{validated_port}/stream",
         }
 
     def stop_stream(self, camera_index: int = 0) -> dict:
@@ -228,23 +259,29 @@ class StreamManager:
         Stop streaming a camera.
 
         Args:
-            camera_index: The camera index to stop streaming
+            camera_index: The camera index to stop streaming (0-100)
 
         Returns:
             Dictionary with status
+
+        Raises:
+            ValueError: If camera_index is invalid.
         """
-        if camera_index not in self._streams:
+        # Validate input
+        validated_index = validate_camera_index(camera_index)
+
+        if validated_index not in self._streams:
             return {
                 "status": "not_running",
-                "camera_index": camera_index,
+                "camera_index": validated_index,
             }
 
-        server = self._streams.pop(camera_index)
+        server = self._streams.pop(validated_index)
         server.stop()
 
         return {
             "status": "stopped",
-            "camera_index": camera_index,
+            "camera_index": validated_index,
         }
 
     def list_streams(self) -> list:
@@ -324,6 +361,13 @@ class DashboardHandler(BaseHTTPRequestHandler):
         """Suppress HTTP server logs to avoid polluting MCP stdio."""
         pass
 
+    def _send_security_headers(self):
+        """Send security headers to prevent common attacks."""
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "SAMEORIGIN")
+        self.send_header("X-XSS-Protection", "1; mode=block")
+        self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
+
     def do_GET(self):
         """Handle GET requests - serve dashboard or API."""
         if self.path == "/":
@@ -338,8 +382,17 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if self.path == "/api/stop-all":
             self._stop_all_streams()
         elif self.path.startswith("/api/stop/"):
-            camera_index = int(self.path.split("/")[-1])
-            self._stop_stream(camera_index)
+            # Validate camera index from URL to prevent injection
+            try:
+                camera_index_str = self.path.split("/")[-1]
+                camera_index = int(camera_index_str)
+                # Basic range validation (full validation in stop_stream)
+                if camera_index < 0 or camera_index > 100:
+                    self.send_error(400, "Invalid camera index")
+                    return
+                self._stop_stream(camera_index)
+            except (ValueError, IndexError):
+                self.send_error(400, "Invalid camera index")
         else:
             self.send_error(404, "Not Found")
 
@@ -350,6 +403,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
+        self._send_security_headers()
         self.end_headers()
         self.wfile.write(data.encode())
 
@@ -360,6 +414,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
+        self._send_security_headers()
         self.end_headers()
         self.wfile.write(data.encode())
 
@@ -537,6 +592,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/html")
         self.send_header("Content-Length", str(len(html)))
+        self._send_security_headers()
         self.end_headers()
         self.wfile.write(html.encode())
 
@@ -548,6 +604,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Access-Control-Allow-Origin", "*")
+        self._send_security_headers()
         self.end_headers()
         self.wfile.write(data.encode())
 
@@ -591,12 +648,18 @@ def start_dashboard(port: int = 9000) -> dict:
     and displays them in a responsive grid layout.
 
     Args:
-        port: The port to serve the dashboard on (default 9000)
+        port: The port to serve the dashboard on (1024-65535, default 9000)
 
     Returns:
         Dictionary with dashboard URL and status
+
+    Raises:
+        ValueError: If port is invalid.
     """
     global _dashboard
+
+    # Validate port
+    validated_port = validate_port(port)
 
     if _dashboard is not None:
         return {
@@ -605,13 +668,13 @@ def start_dashboard(port: int = 9000) -> dict:
             "url": f"http://localhost:{_dashboard.port}",
         }
 
-    _dashboard = DashboardServer(port)
+    _dashboard = DashboardServer(validated_port)
     _dashboard.start()
 
     return {
         "status": "started",
-        "port": port,
-        "url": f"http://localhost:{port}",
+        "port": validated_port,
+        "url": f"http://localhost:{validated_port}",
     }
 
 

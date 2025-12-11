@@ -21,6 +21,18 @@ from optic_mcp import usb as usb  # noqa: E402
 from optic_mcp import rtsp as rtsp  # noqa: E402
 from optic_mcp import hls as hls  # noqa: E402
 from optic_mcp import stream as stream  # noqa: E402
+from optic_mcp import mjpeg as mjpeg  # noqa: E402
+from optic_mcp import screen as screen  # noqa: E402
+from optic_mcp import http_image as http_image  # noqa: E402
+
+# decode module requires libzbar system library, import conditionally
+try:
+    from optic_mcp import decode as decode  # noqa: E402
+
+    DECODE_AVAILABLE = True
+except ImportError:
+    decode = None  # noqa: E402
+    DECODE_AVAILABLE = False
 
 # Initialize the MCP server
 mcp = FastMCP("optic-mcp")
@@ -182,6 +194,195 @@ def stop_dashboard():
         Dictionary with status
     """
     return stream.stop_dashboard()
+
+
+# MJPEG Stream Tools
+@mcp.tool()
+def mjpeg_save_image(mjpeg_url: str, file_path: str, timeout_seconds: int = 10):
+    """
+    Captures a frame from an MJPEG stream and saves it to the given file path.
+    MJPEG streams are common in basic IP cameras, ESP32-CAM, Arduino cameras,
+    and legacy surveillance systems.
+
+    Common MJPEG URL formats:
+        - http://camera/video.mjpg
+        - http://192.168.1.100:8080/mjpg/video.mjpg
+        - http://camera:8080/?action=stream
+        - http://user:pass@camera/video.mjpeg
+
+    Args:
+        mjpeg_url: URL of the MJPEG stream (http:// or https://)
+        file_path: Path where the image will be saved
+        timeout_seconds: Connection timeout in seconds (default 10)
+
+    Returns:
+        Dictionary with status, file_path, and size_bytes
+    """
+    return mjpeg.save_image(mjpeg_url, file_path, timeout_seconds)
+
+
+@mcp.tool()
+def mjpeg_check_stream(mjpeg_url: str, timeout_seconds: int = 10):
+    """
+    Validates an MJPEG stream URL and returns stream information.
+    Useful for testing connectivity before capturing images.
+
+    Args:
+        mjpeg_url: URL of the MJPEG stream (http:// or https://)
+        timeout_seconds: Connection timeout in seconds (default 10)
+
+    Returns:
+        Dictionary with status, url (sanitized), content_type, and error if unavailable
+    """
+    return mjpeg.check_stream(mjpeg_url, timeout_seconds)
+
+
+# Screen Capture Tools
+@mcp.tool()
+def screen_list_monitors():
+    """
+    Lists all available monitors/displays connected to the system.
+    Monitor 0 represents all monitors combined, monitor 1+ are individual displays.
+
+    Returns:
+        List of monitors with id, left, top, width, height, and primary flag
+    """
+    return screen.list_monitors()
+
+
+@mcp.tool()
+def screen_save_image(file_path: str, monitor: int = 0):
+    """
+    Captures full screenshot of specified monitor and saves to file.
+    Monitor 0 captures all monitors combined into one image.
+    Monitor 1+ captures specific individual monitors.
+
+    Args:
+        file_path: Path where the image will be saved
+        monitor: Monitor index to capture (0 = all monitors, 1+ = specific monitor)
+
+    Returns:
+        Dictionary with status, file_path, width, height, and monitor index
+    """
+    return screen.save_image(file_path, monitor)
+
+
+@mcp.tool()
+def screen_save_region(file_path: str, x: int, y: int, width: int, height: int):
+    """
+    Captures a specific region of the screen and saves to file.
+    Coordinates are absolute screen coordinates (0,0 is top-left of primary monitor).
+
+    Args:
+        file_path: Path where the image will be saved
+        x: X coordinate of region's top-left corner
+        y: Y coordinate of region's top-left corner
+        width: Width of region in pixels
+        height: Height of region in pixels
+
+    Returns:
+        Dictionary with status, file_path, width, height, and region details
+    """
+    return screen.save_region(file_path, x, y, width, height)
+
+
+# HTTP Image Tools
+@mcp.tool()
+def http_save_image(url: str, file_path: str, timeout_seconds: int = 30):
+    """
+    Downloads image from URL and saves to the given file path.
+    Supports redirects and basic authentication in URL.
+
+    Args:
+        url: URL of the image (http:// or https://)
+        file_path: Path where the image will be saved
+        timeout_seconds: Connection timeout in seconds (default 30)
+
+    Returns:
+        Dictionary with status, file_path, size_bytes, and content_type
+    """
+    return http_image.save_image(url, file_path, timeout_seconds)
+
+
+@mcp.tool()
+def http_check_image(url: str, timeout_seconds: int = 10):
+    """
+    Validates an HTTP image URL using a HEAD request.
+    Useful for checking image availability without downloading.
+
+    Args:
+        url: URL of the image (http:// or https://)
+        timeout_seconds: Connection timeout in seconds (default 10)
+
+    Returns:
+        Dictionary with status, url (sanitized), content_type, size_bytes, and error if unavailable
+    """
+    return http_image.check_image(url, timeout_seconds)
+
+
+# QR/Barcode Decode Tools (requires libzbar system library)
+if DECODE_AVAILABLE:
+
+    @mcp.tool()
+    def decode_qr(file_path: str):
+        """
+        Decodes QR codes from an image file.
+        Only detects QR codes, ignores other barcode types.
+
+        Args:
+            file_path: Path to the image file to decode
+
+        Returns:
+            Dictionary with found (bool), count, and codes list containing
+            data, type, rect (bounding box), and polygon (corner points)
+        """
+        return decode.decode_qr(file_path)
+
+    @mcp.tool()
+    def decode_barcode(file_path: str):
+        """
+        Decodes barcodes from an image file.
+        Detects common barcode formats: EAN, UPC, Code128, Code39, etc.
+        Does NOT detect QR codes (use decode_qr for that).
+
+        Args:
+            file_path: Path to the image file to decode
+
+        Returns:
+            Dictionary with found (bool), count, and codes list containing
+            data, type (EAN13, CODE128, etc.), rect, and polygon
+        """
+        return decode.decode_barcode(file_path)
+
+    @mcp.tool()
+    def decode_all(file_path: str):
+        """
+        Decodes all supported code types from an image file.
+        Detects both QR codes and all barcode formats.
+
+        Args:
+            file_path: Path to the image file to decode
+
+        Returns:
+            Dictionary with found (bool), count, and codes list containing
+            data, type (QRCODE, EAN13, CODE128, etc.), rect, and polygon
+        """
+        return decode.decode_all(file_path)
+
+    @mcp.tool()
+    def decode_and_annotate(file_path: str, output_path: str):
+        """
+        Decodes all codes from an image and saves annotated image with bounding boxes.
+        Each detected code is outlined and labeled with its type and data.
+
+        Args:
+            file_path: Path to the input image file
+            output_path: Path where annotated image will be saved
+
+        Returns:
+            Dictionary with found, count, output_path, and codes list
+        """
+        return decode.decode_and_annotate(file_path, output_path)
 
 
 def main():
