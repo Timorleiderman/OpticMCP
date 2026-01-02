@@ -13,5 +13,9 @@ from optic_mcp import hls
 #   from optic_mcp import screen
 #   from optic_mcp import http_image
 #   from optic_mcp import decode (requires libzbar)
+#   from optic_mcp import analyze
+#   from optic_mcp import compare
+#   from optic_mcp import detect
+#   from optic_mcp import segmentation
 
 __all__ = ["usb", "rtsp", "hls"]

@@ -73,4 +73,6 @@ line-length = 100
 [dependency-groups]
 dev = [
     "bump2version>=1.0.1",
+    "pytest>=9.0.2",
+    "ruff>=0.14.8",
 ]

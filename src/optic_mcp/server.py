@@ -27,6 +27,7 @@ from optic_mcp import http_image as http_image  # noqa: E402
 from optic_mcp import analyze as analyze  # noqa: E402
 from optic_mcp import compare as compare  # noqa: E402
 from optic_mcp import detect as detect  # noqa: E402
+from optic_mcp import segmentation as segmentation  # noqa: E402
 
 # decode module requires libzbar system library, import conditionally
 try:
@@ -686,6 +687,63 @@ def detect_objects(file_path: str, confidence_threshold: float = 0.5):
         class, confidence, x, y, width, height
     """
     return detect.detect_objects(file_path, confidence_threshold)
+
+
+# Image Segmentation Tools
+@mcp.tool()
+def segment_image(file_path: str, method: str = "threshold", **kwargs):
+    """
+    Segment an image using various traditional OpenCV algorithms.
+
+    Supports both semantic and instance segmentation methods using only OpenCV.
+    Returns segment information including area, bounding box, centroid, and mean color.
+
+    Methods:
+    - threshold: Threshold-based segmentation with connected components (default)
+    - kmeans: K-means clustering for color-based segmentation
+    - watershed: Watershed algorithm for boundary-based segmentation
+    - grabcut: GrabCut algorithm for instance segmentation
+
+    Args:
+        file_path: Path to the image file
+        method: Segmentation method ('threshold', 'kmeans', 'watershed', 'grabcut')
+        **kwargs: Method-specific parameters (e.g., k for kmeans, rect for grabcut)
+
+    Returns:
+        Dictionary with method, num_segments, and segments list containing:
+        - id: Segment identifier
+        - area: Number of pixels in segment
+        - bounding_box: [x, y, width, height]
+        - centroid: [x, y] coordinates
+        - mean_color: [r, g, b] (for kmeans and grabcut)
+    """
+    return segmentation.segment_image(file_path, method, **kwargs)
+
+
+@mcp.tool()
+def segment_image_save(file_path: str, output_path: str, method: str = "threshold", **kwargs):
+    """
+    Segment an image and save the visualized result with colored segments.
+
+    Creates a visual representation of the segmentation with different colors
+    for each segment and saves it to the specified output path.
+
+    Methods:
+    - threshold: Shows segments with random colors overlaid on original image
+    - kmeans: Shows K-means clustered colors
+    - watershed: Shows watershed boundaries in red
+    - grabcut: Shows foreground in green with bounding rectangle
+
+    Args:
+        file_path: Path to the input image file
+        output_path: Path to save the segmented visualization
+        method: Segmentation method ('threshold', 'kmeans', 'watershed', 'grabcut')
+        **kwargs: Method-specific parameters
+
+    Returns:
+        Dictionary with saved (bool), output_path, method, num_segments, and segments list
+    """
+    return segmentation.segment_image_save(file_path, output_path, method, **kwargs)
 
 
 def main():
