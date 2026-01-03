@@ -121,3 +121,96 @@ class TestDetect:
         """Test FileNotFoundError for missing files."""
         with pytest.raises(FileNotFoundError):
             detect.detect_faces("/nonexistent/image.jpg")
+
+    def test_segment_watershed(self):
+        """Test segment_watershed creates output file."""
+        path = create_test_image()
+        output_path = "/tmp/test_watershed.png"
+        try:
+            result = detect.segment_watershed(path, output_path)
+            assert result["success"] is True
+            assert result["method"] == "watershed"
+            assert os.path.exists(output_path)
+            assert "segments_info" in result
+        finally:
+            os.unlink(path)
+            if os.path.exists(output_path):
+                os.unlink(output_path)
+
+    def test_segment_grabcut(self):
+        """Test segment_grabcut creates output file."""
+        path = create_test_image()
+        output_path = "/tmp/test_grabcut.png"
+        try:
+            result = detect.segment_grabcut(path, output_path)
+            assert result["success"] is True
+            assert result["method"] == "grabcut"
+            assert os.path.exists(output_path)
+            assert "segments_info" in result
+        finally:
+            os.unlink(path)
+            if os.path.exists(output_path):
+                os.unlink(output_path)
+
+    def test_segment_grabcut_with_rect(self):
+        """Test segment_grabcut with custom rectangle."""
+        path = create_test_image()
+        output_path = "/tmp/test_grabcut_rect.png"
+        try:
+            rect = [10, 10, 50, 50]
+            result = detect.segment_grabcut(path, output_path, rect)
+            assert result["success"] is True
+            assert result["segments_info"]["rect"] == rect
+            assert os.path.exists(output_path)
+        finally:
+            os.unlink(path)
+            if os.path.exists(output_path):
+                os.unlink(output_path)
+
+    def test_segment_threshold(self):
+        """Test segment_threshold creates output file."""
+        path = create_test_image()
+        output_path = "/tmp/test_threshold.png"
+        try:
+            result = detect.segment_threshold(path, output_path, method="otsu")
+            assert result["success"] is True
+            assert result["method"] == "otsu"
+            assert os.path.exists(output_path)
+            assert "segments_info" in result
+        finally:
+            os.unlink(path)
+            if os.path.exists(output_path):
+                os.unlink(output_path)
+
+    def test_segment_threshold_invalid_method(self):
+        """Test segment_threshold raises on invalid method."""
+        path = create_test_image()
+        try:
+            with pytest.raises(ValueError, match="Invalid method"):
+                detect.segment_threshold(path, "/tmp/out.png", method="invalid")
+        finally:
+            os.unlink(path)
+
+    def test_segment_kmeans(self):
+        """Test segment_kmeans creates output file."""
+        path = create_test_image()
+        output_path = "/tmp/test_kmeans.png"
+        try:
+            result = detect.segment_kmeans(path, output_path, k=3)
+            assert result["success"] is True
+            assert result["method"] == "kmeans"
+            assert result["segments_info"]["k"] == 3
+            assert os.path.exists(output_path)
+        finally:
+            os.unlink(path)
+            if os.path.exists(output_path):
+                os.unlink(output_path)
+
+    def test_segment_kmeans_invalid_k(self):
+        """Test segment_kmeans raises on invalid k value."""
+        path = create_test_image()
+        try:
+            with pytest.raises(ValueError, match="k must be an integer"):
+                detect.segment_kmeans(path, "/tmp/out.png", k=1)
+        finally:
+            os.unlink(path)

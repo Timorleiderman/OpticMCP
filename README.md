@@ -83,6 +83,10 @@ OpticMCP aims to be a universal camera interface for AI assistants, supporting a
 - **detect_motion** - Detect motion between two frames
 - **detect_edges** - Detect edges using Canny, Sobel, or Laplacian
 - **detect_objects** - Detect common objects using MobileNet SSD
+- **segment_watershed** - Perform semantic segmentation using watershed algorithm
+- **segment_grabcut** - Perform semantic segmentation using GrabCut algorithm
+- **segment_threshold** - Perform semantic segmentation using thresholding techniques
+- **segment_kmeans** - Perform semantic segmentation using K-means clustering
 
 ## Requirements
 
@@ -736,6 +740,102 @@ Detects common objects using MobileNet SSD.
     {"class": "person", "confidence": 0.92, "x": 50, "y": 100, "width": 200, "height": 400},
     {"class": "car", "confidence": 0.87, "x": 300, "y": 250, "width": 180, "height": 120}
   ]
+}
+```
+
+#### segment_watershed
+
+Performs semantic segmentation using the watershed algorithm, which treats the grayscale image as a topographic surface and floods basins from markers to segment the image.
+
+**Parameters:**
+- `file_path` (str) - Path to the input image file
+- `output_path` (str) - Path to save the segmentation mask
+
+**Returns:** Dictionary with success, output_path, method, and segments_info
+
+```json
+{
+  "success": true,
+  "output_path": "/path/to/watershed_mask.png",
+  "method": "watershed",
+  "segments_info": {
+    "num_segments": 3,
+    "mask_shape": [480, 640]
+  }
+}
+```
+
+#### segment_grabcut
+
+Performs semantic segmentation using the GrabCut algorithm, an interactive image segmentation method that can extract foreground objects from the background.
+
+**Parameters:**
+- `file_path` (str) - Path to the input image file
+- `output_path` (str) - Path to save the segmentation mask
+- `rect` (list, optional) - Bounding box [x, y, width, height] for foreground initialization
+
+**Returns:** Dictionary with success, output_path, method, and segments_info
+
+```json
+{
+  "success": true,
+  "output_path": "/path/to/grabcut_mask.png",
+  "method": "grabcut",
+  "segments_info": {
+    "rect": [128, 96, 384, 288],
+    "foreground_pixels": 147456,
+    "foreground_percentage": 48.02,
+    "mask_shape": [480, 640]
+  }
+}
+```
+
+#### segment_threshold
+
+Performs semantic segmentation using adaptive thresholding techniques, separating foreground from background based on pixel intensity values.
+
+**Parameters:**
+- `file_path` (str) - Path to the input image file
+- `output_path` (str) - Path to save the segmentation mask
+- `method` (str, default: "otsu") - Thresholding method: "otsu", "adaptive", or "binary"
+
+**Returns:** Dictionary with success, output_path, method, and segments_info
+
+```json
+{
+  "success": true,
+  "output_path": "/path/to/threshold_mask.png",
+  "method": "otsu",
+  "segments_info": {
+    "foreground_pixels": 245760,
+    "foreground_percentage": 80.0,
+    "mask_shape": [480, 640]
+  }
+}
+```
+
+#### segment_kmeans
+
+Performs semantic segmentation using K-means clustering, grouping similar pixels together based on color similarity to create a segmented image.
+
+**Parameters:**
+- `file_path` (str) - Path to the input image file
+- `output_path` (str) - Path to save the segmentation mask
+- `k` (int, default: 4) - Number of clusters (segments) to create
+
+**Returns:** Dictionary with success, output_path, method, and segments_info
+
+```json
+{
+  "success": true,
+  "output_path": "/path/to/kmeans_mask.png",
+  "method": "kmeans",
+  "segments_info": {
+    "k": 4,
+    "cluster_sizes": [81920, 61440, 98304, 163840],
+    "dominant_cluster": 3,
+    "mask_shape": [480, 640]
+  }
 }
 ```
 
