@@ -503,3 +503,315 @@ def detect_objects(file_path: str, confidence_threshold: float = 0.5) -> Dict[st
 
     finally:
         del img
+
+
+def segment_watershed(file_path: str, output_path: str) -> Dict[str, Any]:
+    """
+    Perform semantic segmentation using watershed algorithm.
+
+    Watershed segmentation treats grayscale image as a topographic surface
+    and floods basins from markers to segment the image.
+
+    Args:
+        file_path: Path to the input image file.
+        output_path: Path to save the segmentation mask.
+
+    Returns:
+        Dictionary containing:
+        - success: True if segmentation completed
+        - output_path: Path to the saved mask
+        - method: "watershed"
+        - segments_info: Basic statistics about the segmentation
+
+    Raises:
+        FileNotFoundError: If the image file doesn't exist.
+        ValueError: If paths are invalid.
+    """
+    abs_path = _validate_input_file(file_path)
+    output_path = validate_file_path(output_path)
+
+    img = cv2.imread(abs_path)
+    if img is None:
+        raise ValueError(f"Failed to load image: {abs_path}")
+
+    try:
+        # Convert to grayscale and apply threshold
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+
+        # Noise removal
+        kernel = np.ones((3, 3), np.uint8)
+        opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=2)
+
+        # Sure background area
+        sure_bg = cv2.dilate(opening, kernel, iterations=3)
+
+        # Finding sure foreground area
+        dist_transform = cv2.distanceTransform(opening, cv2.DIST_L2, 5)
+        _, sure_fg = cv2.threshold(dist_transform, 0.7 * dist_transform.max(), 255, 0)
+        sure_fg = np.uint8(sure_fg)
+
+        # Finding unknown region
+        unknown = cv2.subtract(sure_bg, sure_fg)
+
+        # Marker labeling
+        _, markers = cv2.connectedComponents(sure_fg)
+
+        # Add one to all labels so that sure background is not 0, but 1
+        markers = markers + 1
+
+        # Mark unknown region with zero
+        markers[unknown == 255] = 0
+
+        # Apply watershed
+        markers = cv2.watershed(img, markers)
+
+        # Create segmentation mask
+        mask = np.zeros_like(gray)
+        mask[markers > 1] = 255
+
+        # Save mask
+        cv2.imwrite(output_path, mask)
+
+        # Calculate statistics
+        num_segments = len(np.unique(markers)) - 1  # Subtract background
+
+        return {
+            "success": True,
+            "output_path": output_path,
+            "method": "watershed",
+            "segments_info": {"num_segments": num_segments, "mask_shape": list(mask.shape)},
+        }
+
+    finally:
+        del img
+
+
+def segment_grabcut(
+    file_path: str, output_path: str, rect: List[int] | None = None
+) -> Dict[str, Any]:
+    """
+    Perform semantic segmentation using GrabCut algorithm.
+
+    GrabCut is an interactive image segmentation method that can extract
+    foreground objects from the background.
+
+    Args:
+        file_path: Path to the input image file.
+        output_path: Path to save the segmentation mask.
+        rect: Bounding box [x, y, width, height] for foreground initialization.
+              If None, uses the center region of the image.
+
+    Returns:
+        Dictionary containing:
+        - success: True if segmentation completed
+        - output_path: Path to the saved mask
+        - method: "grabcut"
+        - segments_info: Basic statistics about the segmentation
+
+    Raises:
+        FileNotFoundError: If the image file doesn't exist.
+        ValueError: If paths are invalid or rect is malformed.
+    """
+    abs_path = _validate_input_file(file_path)
+    output_path = validate_file_path(output_path)
+
+    img = cv2.imread(abs_path)
+    if img is None:
+        raise ValueError(f"Failed to load image: {abs_path}")
+
+    try:
+        height, width = img.shape[:2]
+
+        # Default rectangle: center 60% of the image
+        if rect is None:
+            rect = [
+                int(width * 0.2),  # x
+                int(height * 0.2),  # y
+                int(width * 0.6),  # width
+                int(height * 0.6),  # height
+            ]
+        elif len(rect) != 4:
+            raise ValueError("rect must contain exactly 4 integers: [x, y, width, height]")
+
+        # Initialize mask
+        mask = np.zeros(img.shape[:2], np.uint8)
+
+        # Background and foreground models
+        bgd_model = np.zeros((1, 65), np.float64)
+        fgd_model = np.zeros((1, 65), np.float64)
+
+        # Apply GrabCut
+        cv2.grabCut(img, mask, tuple(rect), bgd_model, fgd_model, 5, cv2.GC_INIT_WITH_RECT)
+
+        # Create binary mask where foreground is white
+        mask2 = np.where((mask == 2) | (mask == 0), 0, 255).astype("uint8")
+
+        # Save mask
+        cv2.imwrite(output_path, mask2)
+
+        # Calculate statistics
+        foreground_pixels = np.count_nonzero(mask2)
+        total_pixels = height * width
+        foreground_percentage = (foreground_pixels / total_pixels) * 100
+
+        return {
+            "success": True,
+            "output_path": output_path,
+            "method": "grabcut",
+            "segments_info": {
+                "rect": rect,
+                "foreground_pixels": foreground_pixels,
+                "foreground_percentage": round(foreground_percentage, 2),
+                "mask_shape": list(mask2.shape),
+            },
+        }
+
+    finally:
+        del img
+
+
+def segment_threshold(file_path: str, output_path: str, method: str = "otsu") -> Dict[str, Any]:
+    """
+    Perform semantic segmentation using adaptive thresholding techniques.
+
+    Uses thresholding methods to separate foreground from the background based on
+    pixel intensity values.
+
+    Args:
+        file_path: Path to the input image file.
+        output_path: Path to save the segmentation mask.
+        method: Thresholding method - 'otsu', 'adaptive', or 'binary'.
+
+    Returns:
+        Dictionary containing:
+        - success: True if segmentation completed
+        - output_path: Path to the saved mask
+        - method: Thresholding method used
+        - segments_info: Basic statistics about the segmentation
+
+    Raises:
+        FileNotFoundError: If the image file doesn't exist.
+        ValueError: If paths are invalid or method is unsupported.
+    """
+    valid_methods = {"otsu", "adaptive", "binary"}
+    if method not in valid_methods:
+        raise ValueError(f"Invalid method: '{method}'. Must be one of {valid_methods}")
+
+    abs_path = _validate_input_file(file_path)
+    output_path = validate_file_path(output_path)
+
+    img = cv2.imread(abs_path)
+    if img is None:
+        raise ValueError(f"Failed to load image: {abs_path}")
+
+    try:
+        # Convert to grayscale
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+        # Apply thresholding
+        if method == "otsu":
+            _, mask = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        elif method == "adaptive":
+            mask = cv2.adaptiveThreshold(
+                gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
+            )
+        else:  # binary
+            _, mask = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
+
+        # Save mask
+        cv2.imwrite(output_path, mask)
+
+        # Calculate statistics
+        foreground_pixels = np.count_nonzero(mask)
+        total_pixels = gray.shape[0] * gray.shape[1]
+        foreground_percentage = (foreground_pixels / total_pixels) * 100
+
+        return {
+            "success": True,
+            "output_path": output_path,
+            "method": method,
+            "segments_info": {
+                "foreground_pixels": foreground_pixels,
+                "foreground_percentage": round(foreground_percentage, 2),
+                "mask_shape": list(mask.shape),
+            },
+        }
+
+    finally:
+        del img
+
+
+def segment_kmeans(file_path: str, output_path: str, k: int = 4) -> Dict[str, Any]:
+    """
+    Perform semantic segmentation using K-means clustering.
+
+    Groups similar pixels together based on color similarity to create
+    a segmented image.
+
+    Args:
+        file_path: Path to the input image file.
+        output_path: Path to save the segmentation mask.
+        k: Number of clusters (segments) to create.
+
+    Returns:
+        Dictionary containing:
+        - success: True if segmentation completed
+        - output_path: Path to the saved mask
+        - method: "kmeans"
+        - segments_info: Basic statistics about the segmentation
+
+    Raises:
+        FileNotFoundError: If the image file doesn't exist.
+        ValueError: If paths are invalid or k is out of range.
+    """
+    if not isinstance(k, int) or k < 2 or k > 20:
+        raise ValueError("k must be an integer between 2 and 20")
+
+    abs_path = _validate_input_file(file_path)
+    output_path = validate_file_path(output_path)
+
+    img = cv2.imread(abs_path)
+    if img is None:
+        raise ValueError(f"Failed to load image: {abs_path}")
+
+    try:
+        # Reshape image to be a list of pixels
+        pixel_values = img.reshape((-1, 3))
+        pixel_values = np.float32(pixel_values)
+
+        # Define criteria and apply K-means
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.2)
+        _, labels, centers = cv2.kmeans(
+            pixel_values, k, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS
+        )
+
+        # Convert back to 8-bit values
+        centers = np.uint8(centers)
+
+        # Create mask based on the largest cluster
+        unique_labels, counts = np.unique(labels, return_counts=True)
+        largest_cluster = unique_labels[np.argmax(counts)]
+        mask = np.where(labels.flatten() == largest_cluster, 255, 0).astype("uint8")
+        mask = mask.reshape(img.shape[:2])
+
+        # Save mask
+        cv2.imwrite(output_path, mask)
+
+        # Calculate statistics
+        segment_sizes = [int(np.sum(labels == i)) for i in range(k)]
+
+        return {
+            "success": True,
+            "output_path": output_path,
+            "method": "kmeans",
+            "segments_info": {
+                "k": k,
+                "cluster_sizes": segment_sizes,
+                "dominant_cluster": int(largest_cluster),
+                "mask_shape": list(mask.shape),
+            },
+        }
+
+    finally:
+        del img

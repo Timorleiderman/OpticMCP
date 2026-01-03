@@ -1,4 +1,5 @@
 import os
+from typing import List
 
 
 # Suppress OpenCV's stderr noise BEFORE importing cv2
@@ -686,6 +687,81 @@ def detect_objects(file_path: str, confidence_threshold: float = 0.5):
         class, confidence, x, y, width, height
     """
     return detect.detect_objects(file_path, confidence_threshold)
+
+
+@mcp.tool()
+def segment_watershed(file_path: str, output_path: str):
+    """
+    Perform semantic segmentation using watershed algorithm.
+
+    Watershed segmentation treats grayscale image as a topographic surface
+    and floods basins from markers to segment the image.
+
+    Args:
+        file_path: Path to the input image file
+        output_path: Path to save the segmentation mask
+
+    Returns:
+        Dictionary with success, output_path, method, and segments_info
+    """
+    return detect.segment_watershed(file_path, output_path)
+
+
+@mcp.tool()
+def segment_grabcut(file_path: str, output_path: str, rect: List[int] | None = None):
+    """
+    Perform semantic segmentation using GrabCut algorithm.
+
+    GrabCut is an interactive image segmentation method that can extract
+    foreground objects from the background.
+
+    Args:
+        file_path: Path to the input image file
+        output_path: Path to save the segmentation mask
+        rect: Bounding box [x, y, width, height] for foreground initialization
+
+    Returns:
+        Dictionary with success, output_path, method, and segments_info
+    """
+    return detect.segment_grabcut(file_path, output_path, rect)
+
+
+@mcp.tool()
+def segment_threshold(file_path: str, output_path: str, method: str = "otsu"):
+    """
+    Perform semantic segmentation using adaptive thresholding techniques.
+
+    Uses thresholding methods to separate foreground from the background based on
+    pixel intensity values.
+
+    Args:
+        file_path: Path to the input image file
+        output_path: Path to save the segmentation mask
+        method: Thresholding method - 'otsu', 'adaptive', or 'binary'
+
+    Returns:
+        Dictionary with success, output_path, method, and segments_info
+    """
+    return detect.segment_threshold(file_path, output_path, method)
+
+
+@mcp.tool()
+def segment_kmeans(file_path: str, output_path: str, k: int = 4):
+    """
+    Perform semantic segmentation using K-means clustering.
+
+    Groups similar pixels together based on color similarity to create
+    a segmented image.
+
+    Args:
+        file_path: Path to the input image file
+        output_path: Path to save the segmentation mask
+        k: Number of clusters (segments) to create
+
+    Returns:
+        Dictionary with success, output_path, method, and segments_info
+    """
+    return detect.segment_kmeans(file_path, output_path, k)
 
 
 def main():
